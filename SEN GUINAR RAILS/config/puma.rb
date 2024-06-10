@@ -1,23 +1,57 @@
-# Nombre de threads minimum et maximum par worker
-threads_count = Integer(ENV['RAILS_MAX_THREADS'] || 5)
-threads threads_count, threads_count
+#
+port        ENV.fetch("PORT") { 3000 }
 
-# Définir le port par défaut
-port        ENV.fetch('PORT') { 3000 }
+# Specifies the `pidfile` that Puma will use.
+#pidfile ENV.fetch("PIDFILE") { "tmp/pids/server.pid" }
 
-# Définir l'environnement d'exécution
-environment ENV.fetch('RAILS_ENV') { 'development' }
+# Specifies the number of `workers` to boot in clustered mode.
+# Workers are forked web server processes. If using threads and workers together
+# the concurrency of the application would be max `threads` * `workers`.
+# Workers do not work on JRuby or Windows (both of which do not support
+# processes).
+#
+# workers ENV.fetch("WEB_CONCURRENCY") { 2 }
+workers ENV.fetch("WEB_CONCURRENCY") { 2 }
 
-# Définir le nombre de workers
-workers Integer(ENV['WEB_CONCURRENCY'] || 2)
+app_dir = File.expand_path("../..", __FILE__)
+shared_dir = "#{app_dir}/tmp"
+# Default to production
+rails_env = ENV['RAILS_ENV'] || "development"
+environment rails_env
 
-# Précharger l'application avant de forker les workers pour utiliser la copie en écriture
-preload_app!
 
-on_worker_boot do
-  # Code à exécuter lorsque le worker démarre
-  ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
+#on_worker_boot do
+#  require "active_record"
+#  ActiveRecord::Base.connection.disconnect! rescue ActiveRecord::ConnectionNotEstablished
+#  ActiveRecord::Base.establish_connection(YAML.load_file("#{app_dir}/config/database.yml")[rails_env])
+#end
+
+
+# Use the `preload_app!` method when specifying a `workers` number.
+# This directive tells Puma to first boot the application and load code
+# before forking the application. This takes advantage of Copy On Write
+# process behavior so workers use less memory.
+#
+if rails_env == 'production'
+    # Set up socket location
+  bind "unix://#{shared_dir}/sockets/puma.sock"
+  # Logging
+  stdout_redirect "#{shared_dir}/log/puma.stdout.log", "#{shared_dir}/log/puma.stderr.log", true
+
+  # Set master PID and state locations
+  pidfile "#{shared_dir}/pids/puma.pid"
+  state_path "#{shared_dir}/pids/puma.state"
+  activate_control_app
+  preload_app!
+  daemonize true 
 end
 
-# Autoriser Puma à se redémarrer avec `rails restart` command
+# Use the `preload_app!` method when specifying a `workers` number.
+# This directive tells Puma to first boot the application and load code
+# before forking the application. This takes advantage of Copy On Write
+# process behavior so workers use less memory.
+#
+# preload_app!
+
+# Allow puma to be restarted by `rails restart` command.
 plugin :tmp_restart
