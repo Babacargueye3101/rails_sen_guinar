@@ -1,4 +1,4 @@
-# Utiliser l'image officielle de Ruby comme base
+# Utiliser l'image officielle de Ruby 3.1.2 comme base
 FROM ruby:3.1.2
 
 # Installer les dépendances nécessaires
